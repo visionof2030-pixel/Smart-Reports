@@ -161,6 +161,10 @@ font-size: 11px !important;
 #aiFillBtn{background:linear-gradient(135deg, #9C27B0 0%, #7B1FA2 100%);}
 #aiFillBtn:hover{background:linear-gradient(135deg, #7B1FA2 0%, #6A1B9A 100%);}
 
+/* زر الذكاء الاصطناعي B */
+#aiFillBtnB{background:linear-gradient(135deg, #6A1B9A 0%, #4A148C 100%);}
+#aiFillBtnB:hover{background:linear-gradient(135deg, #4A148C 0%, #38006B 100%);}
+
 /* تصميم خاص لأزرار PDF وواتساب */
 #pdfBtn{background:linear-gradient(135deg, #d9534f 0%, #c9302c 100%);}
 #pdfBtn:hover{background:linear-gradient(135deg, #c9302c 0%, #ac2925 100%);}
@@ -1342,6 +1346,11 @@ user-select: none;
                 <i class="fas fa-robot btn-icon"></i>
                 <span class="btn-text">تعبئة بالذكاء الاصطناعي</span>
             </button>
+            <!-- زر الذكاء الاصطناعي B الجديد -->
+            <button class="main-btn" id="aiFillBtnB" onclick="fillWithAIBackend()" title="تعبئة الحقول باستخدام خادم الذكاء الاصطناعي البديل (Backend)">
+                <i class="fas fa-server btn-icon"></i>
+                <span class="btn-text">تعبئة بالذكاء B</span>
+            </button>
             <button class="main-btn" id="pdfBtn" onclick="downloadPDF()" title="تحويل التقرير إلى PDF وتنزيله">
                 <i class="fas fa-file-pdf btn-icon"></i>
                 <span class="btn-text">تنزيل PDF</span>
@@ -1967,6 +1976,9 @@ let currentReportType = "";
 // متغير لتخزين مفتاح API
 let geminiApiKey = '';
 
+// رابط خادم الذكاء الاصطناعي B الصحيح
+const backendAIUrl = 'https://gemini-backend-x1r2.onrender.com/ask';
+
 // حفظ مفتاح Gemini
 function saveGeminiKey() {
     const key = document.getElementById('geminiKey').value.trim();
@@ -2477,6 +2489,129 @@ ${count ? `عدد الحضور: ${count}` : ''}
     } catch (error) {
         console.error('خطأ في الذكاء الاصطناعي:', error);
         alert(`خطأ: ${error.message}\n\nتأكد من:\n1. صحة مفتاح API\n2. اتصال الإنترنت\n3. أن النموذج متاح (gemini-2.5-flash-lite)\n4. أن المفتاح مفعل للاستخدام`);
+    } finally {
+        // استعادة الحالة الأصلية
+        aiButton.querySelector('.btn-text').textContent = originalText;
+        aiButton.querySelector('.btn-icon').className = originalIcon;
+        aiButton.classList.remove('ai-loading');
+        aiButton.disabled = false;
+    }
+}
+
+// ==================== دالة الذكاء الاصطناعي B باستخدام Backend مع الرابط الصحيح ====================
+
+async function fillWithAIBackend() {
+    // التحقق من اتصال الإنترنت
+    if (!navigator.onLine) {
+        alert('لا يوجد اتصال بالإنترنت. الرجاء التأكد من الاتصال');
+        return;
+    }
+    
+    // الحصول على نوع التقرير
+    const reportType = getReportTypeText();
+    if (!reportType || reportType === 'تقرير') {
+        alert('الرجاء اختيار أو إدخال نوع التقرير أولاً');
+        return;
+    }
+    
+    // الحصول على معلومات إضافية
+    const subject = document.getElementById('subject').value || '';
+    const lesson = document.getElementById('lesson').value || '';
+    const grade = document.getElementById('grade').value || '';
+    const target = document.getElementById('target').value || '';
+    const place = document.getElementById('place').value || '';
+    const count = document.getElementById('count').value || '';
+    
+    // عرض مؤشر التحميل
+    const aiButton = document.getElementById('aiFillBtnB');
+    const originalText = aiButton.querySelector('.btn-text').textContent;
+    const originalIcon = aiButton.querySelector('.btn-icon').className;
+    
+    aiButton.querySelector('.btn-text').textContent = 'جارٍ التعبئة...';
+    aiButton.querySelector('.btn-icon').className = 'fas fa-spinner fa-spin btn-icon';
+    aiButton.classList.add('ai-loading');
+    aiButton.disabled = true;
+    
+    try {
+        // إعداد النص المطلوب للذكاء الاصطناعي - البرومبت المهني
+        const prompt = `أنت خبير تربوي تعليمي محترف تمتلك خبرة ميدانية واسعة في التعليم العام.  
+اعتمد منظورًا تربويًا مهنيًا احترافيًا يركّز على تحسين جودة التعليم، ودعم المعلم، وتعزيز بيئة التعلّم، وخدمة القيادة المدرسية.  
+
+التقرير المطلوب: "${reportType}"
+${subject ? `المادة: ${subject}` : ''}
+${lesson ? `الدرس: ${lesson}` : ''}
+${grade ? `الصف: ${grade}` : ''}
+${target ? `المستهدفون: ${target}` : ''}
+${place ? `مكان التنفيذ: ${place}` : ''}
+${count ? `عدد الحضور: ${count}` : ''}
+
+**توجيهات مهنية:**
+- كن موضوعيًا ومتزنًا وبنّاءً  
+- قدّم الملاحظات بصيغة تطويرية غير نقدية  
+- راعِ واقع الميدان التعليمي وسياق المدرسة  
+- اربط بين المعلم والطالب والمنهج والبيئة الصفية والقيادة المدرسية  
+- ركّز على جودة التعليم وأثر الممارسات على تعلم الطلاب  
+- التزم بلغة عربية فصيحة سليمة وخالية من الأخطاء  
+
+**شروط المحتوى:**
+1. لا تكتب أبداً عنوان الحقل في المحتوى (مثل "الهدف التربوي هو:" أو "النبذة المختصرة:")
+2. كل حقل يجب أن يحتوي على 25 كلمة تقريباً
+3. المحتوى النهائي يجب أن يُصدر من قبل (المعلم)
+4. اجعل الهدف النهائي هو تحسين الممارسة التعليمية ودعم التطوير المهني المستدام
+
+**الحقول المطلوبة:**
+1. الهدف التربوي
+2. نبذة مختصرة  
+3. إجراءات التنفيذ
+4. الاستراتيجيات
+5. نقاط القوة
+6. نقاط التحسين
+7. التوصيات
+
+يرجى تقديم الإجابة باللغة العربية الفصحى، وتنظيمها بحيث يكون كل حقل في سطر منفصل يبدأ برقمه فقط دون ذكر العنوان.`;
+
+        // استدعاء خادم Backend - الرابط الصحيح مع /ask
+        const response = await fetch(backendAIUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                prompt: prompt,
+                model: "gemini-2.5-flash-lite",
+                reportData: {
+                    reportType: reportType,
+                    subject: subject,
+                    lesson: lesson,
+                    grade: grade,
+                    target: target,
+                    place: place,
+                    count: count
+                }
+            })
+        });
+
+        if (!response.ok) {
+            throw new Error(`خطأ في الاتصال بالخادم: ${response.status}`);
+        }
+
+        const data = await response.json();
+        
+        // فحص الاستجابة حسب هيكل data.answer
+        if (!data || !data.answer) {
+            throw new Error('لم يتم الحصول على إجابة من الذكاء الاصطناعي');
+        }
+        
+        const aiResponse = data.answer;
+        
+        // تحليل الإجابة وتعيينها للحقول
+        parseAIResponseProfessional(aiResponse);
+        
+        showNotification('تم تعبئة الحقول باستخدام الذكاء الاصطناعي B بنجاح! ✓');
+        
+    } catch (error) {
+        console.error('خطأ في الذكاء الاصطناعي B:', error);
+        alert(`خطأ: ${error.message}\n\nتأكد من:\n1. اتصال الإنترنت\n2. أن خادم Backend يعمل على الرابط: ${backendAIUrl}`);
     } finally {
         // استعادة الحالة الأصلية
         aiButton.querySelector('.btn-text').textContent = originalText;
